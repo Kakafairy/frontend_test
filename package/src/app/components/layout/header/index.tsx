@@ -1,0 +1,255 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { Icon } from "@iconify/react/dist/iconify.js";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import HeaderLink from "./Navigation/HeaderLink";
+import Logo from "./Logo";
+import MobileHeader from "./Navigation/MobileHeader";
+import ThemeToggler from "./ThemeToggle";
+import {
+  NavigationMenu,
+  NavigationMenuItem,
+  NavigationMenuList,
+} from "@/components/ui/navigation-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+  SheetClose,
+} from "@/components/ui/sheet";
+
+const Header = () => {
+  const { data: session } = useSession();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuData, setMenuData] = useState<any[]>([]);
+  const [user, setUser] = useState<{ user: any } | null>(null);
+  const [sticky, setSticky] = useState(false);
+  const pathname = usePathname();
+  const hasMounted = useRef(false);
+
+  const handleScroll = () => {
+    setSticky(window.scrollY >= 80);
+  };
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+
+    // Run only once on initial mount
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+
+      const fetchData = async () => {
+        try {
+          const res = await fetch("/api/layout-data");
+          if (!res.ok) throw new Error("Failed to fetch");
+          const data = await res.json();
+          setMenuData(data?.headerData);
+        } catch (error) {
+          console.error("Error fetching services:", error);
+        }
+      };
+
+      fetchData();
+    }
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [pathname]);
+
+  const handleSignOut = () => {
+    localStorage.removeItem("user");
+    signOut();
+    setUser(null);
+  };
+
+  return (
+    <>
+      <header className={`fixed top-0 z-50 w-full`}>
+        <div className="container p-3">
+          <nav
+            className={`flex items-center py-3 px-4 justify-between ${
+              sticky
+                ? " rounded-full shadow-sm bg-white dark:bg-dark_black"
+                : null
+            } `}
+          >
+            <div className="flex items-center">
+              <Logo />
+            </div>
+            <NavigationMenu className="hidden lg:flex bg-dark_black/5 dark:bg-white/5 rounded-full p-1">
+              <NavigationMenuList className="flex gap-0 2xl:gap-1.5 list-none">
+                {menuData?.map((item, index) => (
+                  <NavigationMenuItem key={index}>
+                    <HeaderLink item={item} />
+                  </NavigationMenuItem>
+                ))}
+              </NavigationMenuList>
+            </NavigationMenu>
+            <div className="flex items-center gap-1 xl:gap-4">
+              {/* ---------------------SignUp SignIn Button-----------------  */}
+              {user?.user || session?.user ? (
+                <div className="hidden lg:flex gap-4">
+                  <button
+                    onClick={() => handleSignOut()}
+                    className="flex group font-normal items-center gap-1 transition-all duration-200 ease-in-out text-white px-4 py-2 bg-dark_black dark:bg-white/15 rounded-full hover:text-dark_black hover:bg-white dark:hover:bg-white/5 dark:hover:text-white border border-dark_black"
+                  >
+                    Sign Out
+                    <Icon icon="solar:logout-outline" width="25" height="25" />
+                  </button>
+                  <div className="relative group">
+                    <Image
+                      src="/images/home/avatar_1.jpg"
+                      alt="Image"
+                      width={40}
+                      height={40}
+                      quality={100}
+                      className="rounded-full cursor-pointer"
+                    />
+                    <p className="absolute w-fit text-sm text-center z-10 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 bg-white dark:bg-white/5 text-dark_black/60 p-1 min-w-28 rounded-lg shadow-2xl top-full left-1/2 transform -translate-x-1/2 mt-3">
+                      {user?.user || session?.user?.name}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={"/signin"}
+                    className="hidden lg:block bg-transparent border border-dark_black dark:border-white/50 text-primary px-2.5 xl:px-4 py-2 rounded-full hover:bg-dark_black hover:text-white"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href={"/signup"}
+                    className="hidden lg:block text-white px-2.5 xl:px-4 py-2  bg-dark_black dark:bg-white/20 rounded-full hover:opacity-90"
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+
+              {/* ---------------------Light/Dark Mode button-------------------- */}
+              <ThemeToggler />
+
+              <div className="hidden max-lg:flex">
+                <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+                  <SheetTrigger render={<button />}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeMiterlimit="10"
+                        strokeWidth="1.5"
+                        d="M4.5 12h15m-15 5.77h15M4.5 6.23h15"
+                      />
+                    </svg>
+                  </SheetTrigger>
+                  <SheetContent
+                    side="right"
+                    className="bg-white dark:bg-dark_black border-none p-0 max-w-xs"
+                    showCloseButton={false}
+                  >
+                    <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
+                    <div className="flex items-center justify-between p-4">
+                      <p className="text-lg font-bold">Menu</p>
+                      <SheetClose
+                        render={<button aria-label="Close mobile menu" />}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="none"
+                            stroke="currentColor"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </SheetClose>
+                    </div>
+                    <div className="p-4">
+                      <ul className="flex flex-col">
+                        {menuData &&
+                          menuData?.map((item, index) => (
+                            <SheetClose key={index} className={'w-fit'}>
+                              <MobileHeader item={item} />
+                            </SheetClose>
+                          ))}
+                        <div className="flex flex-col items-center gap-3 px-2 mt-2">
+                          {user || session?.user ? (
+                            <>
+                              <button
+                                onClick={() => signOut()}
+                                className="flex w-full group font-normal items-center gap-2 transition-all duration-200 ease-in-out text-white dark:text-dark_black px-4 py-2 bg-dark_black rounded-md hover:text-dark_black hover:bg-white border border-dark_black"
+                              >
+                                Sign Out
+                                <Icon
+                                  icon="solar:logout-outline"
+                                  width="25"
+                                  height="25"
+                                />
+                              </button>
+                              <div className="group flex gap-2 items-center w-full border border-dark_black dark:border-white px-4 py-2 rounded-md hover:bg-dark_black transition-all duration-200 ease-in-out">
+                                <Image
+                                  src="/images/home/avatar_1.jpg"
+                                  alt="Image"
+                                  width={25}
+                                  height={25}
+                                  quality={100}
+                                  className="rounded-full cursor-pointer"
+                                />
+                                <p className="group-hover:text-white text-dark_black dark:text-white w-full capitalize">
+                                  {user?.user?.email || session?.user?.name}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Link
+                                href={"/signin"}
+                                className="w-full border border-dark_black dark:border-white text-primary px-4 py-2 rounded-md hover:bg-dark_black dark:hover:bg-white hover:text-white dark:hover:text-dark_black"
+                              >
+                                Sign In
+                              </Link>
+                              <Link
+                                href={"/signup"}
+                                className="w-full text-white dark:text-dark_black px-4 py-2 bg-dark_black dark:bg-white rounded-md hover:opacity-90"
+                              >
+                                Sign Up
+                              </Link>
+                            </>
+                          )}
+                        </div>
+                      </ul>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </div>
+          </nav>
+        </div>
+      </header>
+    </>
+  );
+};
+
+export default Header;
